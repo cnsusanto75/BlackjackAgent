@@ -2,10 +2,14 @@ import gymnasium
 import gymnasium.wrappers
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+
+from gymnasium.wrappers import RecordVideo
+
 
 class QLearningAgent:
-    def __init__(self, state_size = 3, action_size = 2, learning_rate = 0.2, discount_factor = 1.0,
-                 epsilon = 1, epsilon_decay = 0.9998, epsilon_min = 0.05):
+    def __init__(self, state_size = 3, action_size = 2, learning_rate = 0.1, discount_factor = 0.9,
+                 epsilon = 1, epsilon_decay = 0.99, epsilon_min = 0.05):
         self.state_size = state_size
         self.action_size = action_size
         self.learning_rate = learning_rate
@@ -62,7 +66,15 @@ def train_agent(num_episodes = 100, render = False):
     return agent, episode_rewards
 
 def test_agent(agent, num_episodes = 5, render = False):
-    env = gymnasium.make("Blackjack-v1", render_mode = "human" if render else None)
+    env = gymnasium.make("Blackjack-v1", render_mode = "rgb_array" if render else None)
+    env = RecordVideo(
+        env,
+        video_folder="evaluation_videos",
+        name_prefix="eval-multi-episode",
+        episode_trigger=lambda episode_id: True,  # Record every episode
+        video_length=0
+    )
+
     episode_rewards = []
     for i in range(num_episodes):
         state, _ = env.reset()
@@ -76,10 +88,12 @@ def test_agent(agent, num_episodes = 5, render = False):
 
         episode_rewards.append(total_reward)
         print(f"\nEpisode {i + 1} / {num_episodes} complete. Reward: {total_reward:.2f}")
+    env.close()
+    print(f"Mean rewards over testing optimal policy: {np.mean(episode_rewards):.2f}")
 
 if __name__ == "__main__":
-    agent, rewards = train_agent(20000)
-    test_agent(agent)
+    agent, rewards = train_agent(10000)
+    test_agent(agent, 30, render=True)
     rewards = np.array(rewards)
     moving_avg = np.empty(len(rewards))
     for i in range(1, len(rewards)):
@@ -92,4 +106,9 @@ if __name__ == "__main__":
     plt.ylabel("Average Reward")
     plt.grid(True, linestyle="--", alpha=0.7)
     plt.legend()
+    output_dir = "plots/"
+    filename = "temp.png"
+    os.makedirs(output_dir, exist_ok=True)
+    file_path = os.path.join(output_dir, filename)
+    plt.savefig(file_path, dpi = 300, bbox_inches='tight')
     plt.show()
